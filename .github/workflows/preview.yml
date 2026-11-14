@@ -11,12 +11,6 @@ jobs:
   preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Substack from a runner
-        continue-on-error: true
-        run: |
-          for u in https://nathanpmyoung.substack.com/feed "https://nathanpmyoung.substack.com/api/v1/posts?limit=1" https://nathanpmyoung.substack.com/sitemap.xml; do
-            for ua in "nathanpmyoung.com site builder" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36" "curl/8"; do
-              echo "PROBE $(curl -s -o /dev/null -w '%{http_code} %{size_download}' -A "$ua" "$u") $u [$ua]"; done; done
       - uses: actions/checkout@v4
         with:
           repository: nathanpmyoung/nathanpmyoung.github.io
@@ -26,7 +20,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python3 sitegen/test_gate.py
-      - run: python3 sitegen/build.py --out www --noindex
+      - run: |
+          git fetch -q origin substack-data
+          git show origin/substack-data:posts.json > "$RUNNER_TEMP/posts.json"
+          python3 sitegen/build.py --out www --noindex --posts "$RUNNER_TEMP/posts.json"
       - run: python3 sitegen/gate.py --out www
       - run: rm www/CNAME && mkdir -p www/.github/workflows && curl -sf https://raw.githubusercontent.com/nathanpmyoung/site-preview/gh-pages/.github/workflows/preview.yml -o www/.github/workflows/preview.yml
       - uses: JamesIves/github-pages-deploy-action@v4
