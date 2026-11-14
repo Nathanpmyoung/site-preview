@@ -1,0 +1,29 @@
+# Rebuilds the noindex preview from the static-site branch of nathanpmyoung.github.io,
+# the same steps the live workflow will run. Delete this repo once the live site switches.
+on:
+  workflow_dispatch:
+  push:
+    branches: [gh-pages]
+    paths: [.github/workflows/preview.yml]
+permissions:
+  contents: write
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: nathanpmyoung/nathanpmyoung.github.io
+          ref: static-site
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 sitegen/test_gate.py
+      - run: python3 sitegen/build.py --out www --noindex
+      - run: python3 sitegen/gate.py --out www
+      - run: rm www/CNAME && mkdir -p www/.github/workflows && curl -sf https://raw.githubusercontent.com/nathanpmyoung/site-preview/gh-pages/.github/workflows/preview.yml -o www/.github/workflows/preview.yml
+      - uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: www
+          branch: gh-pages
