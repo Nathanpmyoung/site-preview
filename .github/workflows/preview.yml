@@ -1,5 +1,5 @@
 # Rebuilds the noindex preview from the static-site branch of nathanpmyoung.github.io,
-# the same steps the live workflow will run. Delete this repo once the live site switches.
+# the same steps the live workflow runs. Delete this repo once the live site switches.
 on:
   workflow_dispatch:
   push:
@@ -16,17 +16,18 @@ jobs:
           repository: nathanpmyoung/nathanpmyoung.github.io
           ref: static-site
           fetch-depth: 0
+      - uses: logseq/publish-spa@v0.2.0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python3 sitegen/test_gate.py
+      - run: python3 sitegen/build.py --spa www --out "$RUNNER_TEMP/site" --noindex
+      - run: python3 sitegen/gate.py --out "$RUNNER_TEMP/site"
       - run: |
-          git fetch -q origin substack-data
-          git show origin/substack-data:posts.json > "$RUNNER_TEMP/posts.json"
-          python3 sitegen/build.py --out www --noindex --posts "$RUNNER_TEMP/posts.json"
-      - run: python3 sitegen/gate.py --out www
-      - run: rm www/CNAME && mkdir -p www/.github/workflows && curl -sf https://raw.githubusercontent.com/nathanpmyoung/site-preview/gh-pages/.github/workflows/preview.yml -o www/.github/workflows/preview.yml
+          rm "$RUNNER_TEMP/site/CNAME"
+          mkdir -p "$RUNNER_TEMP/site/.github/workflows"
+          cp "$GITHUB_WORKSPACE/../preview.yml" "$RUNNER_TEMP/site/.github/workflows/" 2>/dev/null || curl -sf https://raw.githubusercontent.com/nathanpmyoung/site-preview/gh-pages/.github/workflows/preview.yml -o "$RUNNER_TEMP/site/.github/workflows/preview.yml"
       - uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: www
+          folder: ${{ runner.temp }}/site
           branch: gh-pages
